@@ -22,6 +22,7 @@ function(add_serializer_generation TARGET)
             ${ARG_CODE}
         COMMAND $<TARGET_FILE:serializer-generator> --compilation-db ${ARG_COMPILATION_DB} --out-header ${ARG_HEADER} --out-code ${ARG_CODE} ${ARG_FILES}
         DEPENDS $<TARGET_FILE:serializer-generator>
+        IMPLICIT_DEPENDS CXX ${ARG_FILES}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
     add_custom_target(gen-serializer-for-${TARGET}
