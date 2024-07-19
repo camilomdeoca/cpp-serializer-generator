@@ -24,12 +24,12 @@ function(add_serializer_generation TARGET)
         DEPENDS $<TARGET_FILE:serializer-generator>
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
-    add_custom_target(gen-serializer
+    add_custom_target(gen-serializer-for-${TARGET}
         DEPENDS
             ${ARG_HEADER}
             ${ARG_CODE}
     )
     add_dependencies(${TARGET}
-        gen-serializer
+        gen-serializer-for-${TARGET}
     )
 endfunction()
