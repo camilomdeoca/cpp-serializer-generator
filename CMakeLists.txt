@@ -1,70 +1,16 @@
-# Serializer generator
-find_package(Clang REQUIRED)
-set(LLVM_LINK_COMPONENTS support)
-add_executable(serializer-generator
-    Main.cpp
-    ASTParser.cpp
-    CodeGenerator.cpp
-    SerializerTemplate.cpp
-)
-set_target_properties(serializer-generator PROPERTIES
-    CXX_STANDARD 17
-    CXX_COMPILER /usr/bin/clang++
-)
-target_include_directories(serializer-generator
-    PRIVATE
-    /usr/include
-    ${CLANG_INCLUDE_DIRS}
-)
-target_link_libraries(serializer-generator
-    PRIVATE
-    clang-cpp
-    LLVM-17
-)
+cmake_minimum_required(VERSION 3.27)
+project(paca-tools)
 
-# Generate serializer template before build
-add_custom_command(
-    OUTPUT
-        ${CMAKE_CURRENT_SOURCE_DIR}/SerializerTemplate.cpp
-    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/generate-serializer-template.sh ${CMAKE_CURRENT_SOURCE_DIR}/SerializerTemplate.cpp
-    DEPENDS
-        generate-serializer-template.sh
-        Serializer.hpp.template
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-)
-add_custom_target(gen_serializer_template_header
-    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/SerializerTemplate.cpp
-)
+# Set C++ standard and optimization level
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
+set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -DDEBUG -Wall -Wpedantic")
 
-add_dependencies(serializer-generator
-    gen_serializer_template_header
-)
-
-# test
-#file(GLOB_RECURSE SERIALIZER_GENERATOR_TEST_SOURCES test/*.cpp )
-set(SERIALIZER_GENERATOR_TEST_SOURCES
-    test/test.cpp
-)
-add_executable(serializer-generator-test
-    ${SERIALIZER_GENERATOR_TEST_SOURCES}
-    test/Serializer.cpp
-)
-set_target_properties(serializer-generator-test PROPERTIES
-    #EXCLUDE_FROM_ALL true
-    EXPORT_COMPILE_COMMANDS ON
-)
+set(EXECUTABLE_OUTPUT_PATH ${CMAKE_SOURCE_DIR}/build)
+set(CMAKE_EXPORT_COMPILE_COMMANDS on)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/serializer-generator.cmake)
 
-add_serializer_generation(serializer-generator-test
-    HEADER test/Serializer.hpp
-    CODE   test/Serializer.cpp
-    FILES  ${SERIALIZER_GENERATOR_TEST_SOURCES}
-)
-
 enable_testing()
 
-add_test(
-    NAME serializer-generator-test
-    COMMAND $<TARGET_FILE:serializer-generator-test>
-)
+add_subdirectory(src)
+add_subdirectory(test)

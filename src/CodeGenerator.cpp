@@ -72,7 +72,7 @@ void generateCode(const CXXParser::ExecutionData &data,
     std::unordered_set<std::string> includes;
 
     // Include Serializer header
-    const std::filesystem::path codeFileParentPath = outCodeFilepath.parent_path();
+    const std::filesystem::path codeFileParentPath = std::filesystem::absolute(outCodeFilepath).parent_path();
     const std::filesystem::path relativeHeaderFromCodeFileParentPath
         = std::filesystem::relative(outHeaderFilepath, codeFileParentPath);
     ofs << "#include \"" << relativeHeaderFromCodeFileParentPath.generic_string() << "\""

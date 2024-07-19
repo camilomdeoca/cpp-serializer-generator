@@ -93,6 +93,7 @@ void printHelp(const char *programName)
 
 int main(int argc, const char *argv[])
 {
+    std::cout << "CWD: " << std::filesystem::current_path() << std::endl;
     if (argc < 2)
     {
         printHelp(argv[0]);

@@ -1,7 +1,12 @@
 #!/usr/bin/env sh
 
-template_path="Serializer.hpp.template"
-out_filepath=$1
+template_path=$1
+out_filepath=$2
+
+if [ ! -f $template_path ]
+then
+    exit 1
+fi
 
 > $out_filepath
 
