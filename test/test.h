@@ -2,16 +2,18 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 #include "Serializer.hpp"
 
 struct Another {
     std::string name;
+    std::vector<int> numbers;
 };
 
 struct TestStruct : public Another {
-    TestStruct(std::string name, float volume, uint32_t count)
-        : Another(name), volume(volume), count(count)
+    TestStruct(std::string name, std::vector<int> &&numbers, float volume, uint32_t count)
+        : Another(name, numbers), volume(volume), count(count)
     {}
 
     void testFunc() {}
@@ -21,3 +23,4 @@ struct TestStruct : public Another {
     AUTO_SERIALIZE;
 };
 
+bool vectorsAreSame(std::vector<int> vec1, std::vector<int> vec2);

@@ -1,5 +1,6 @@
 #include "ASTParser.hpp"
 #include "CodeGenerator.hpp"
+#include "Json.hpp"
 
 #include <cstring>
 #include <filesystem>
@@ -9,22 +10,54 @@
 
 enum ExitCodes {
     EXIT_CODE_OK = 0,
-    EXIT_CODE_NO_FILES,
-    EXIT_CODE_BAD_PARAMETERS = 2,
+    EXIT_CODE_NO_CPP_FILE = 1,
+    EXIT_CODE_NO_JSON_FILES = 2,
+    EXIT_CODE_BAD_PARAMETERS = 3,
 };
 
 struct ParsedArguments {
+    std::string executableName;
     std::string serializerOutHeaderFilename = "serializer.h";
     std::string serializerOutCodeFilename = "serializer.cpp";
     std::string compilationDBFolderPath = ".";
+    std::string jsonOutputPath;
+    std::string cppFile;
+    std::vector<std::string> jsonFiles;
     bool showHelp = false;
+    bool generateJsonFile = false;
 };
 
-ParsedArguments getArgs(int &argc, const char **&argv)
+void printHelp(std::string_view programName)
+{
+    std::cout <<
+    //  |1                                                                             |80
+    "Description:\n"
+    "  Generates a json file containing the data of the definitions of the classes or\n"
+    "  structs with the AUTO_SERIALIZE macro. Also generates the serializer and\n"
+    "  unserializer classes for serializing/unserializing the classes or structs with\n"
+    "  the macro\n"
+    "Json generation:\n"
+    "Usage: " << programName << " [options] cpp_file\n"
+    "  --out-json        The generated json filepath (`cpp_file.json` by default)\n"
+    "  --compilation-db  The path of the folder including the compilation database\n"
+    "                    (`.` by default)\n"
+    "  -h, --help        Print the program options\n"
+    "C++ files generation:\n"
+    "Usage: " << programName << " [options] json_file...\n"
+    "  --out-header      The generated header filepath (`serializer.h` by default)\n"
+    "  --out-code        The generated code filepath (`serializer.cpp` by default)"
+    << std::endl;
+}
+
+ParsedArguments getArgs(int argc, const char **argv)
 {
     ParsedArguments result;
+    std::vector<std::string> freeArgs;
 
-    while (++argv)
+    result.executableName = *argv;
+
+    ++argv;
+    while (*argv)
     {
         argc--;
         if (strcmp(*argv, "--out-header") == 0)
@@ -32,11 +65,12 @@ ParsedArguments getArgs(int &argc, const char **&argv)
             if (++argv)
             {
                 argc--;
+                result.generateJsonFile = false;
                 result.serializerOutHeaderFilename = *argv;
             }
             else
             {
-                std::cerr << "The --out-header parameter has no value" << std::endl;
+                std::cerr << "The " << *(argv - 1) << " parameter has no value" << std::endl;
                 exit(EXIT_CODE_BAD_PARAMETERS);
             }
         }
@@ -45,11 +79,12 @@ ParsedArguments getArgs(int &argc, const char **&argv)
             if (++argv)
             {
                 argc--;
+                result.generateJsonFile = false;
                 result.serializerOutCodeFilename = *argv;
             }
             else
             {
-                std::cerr << "The --out-code parameter has no value" << std::endl;
+                std::cerr << "The " << *(argv - 1) << " parameter has no value" << std::endl;
                 exit(EXIT_CODE_BAD_PARAMETERS);
             }
         }
@@ -58,11 +93,26 @@ ParsedArguments getArgs(int &argc, const char **&argv)
             if (++argv)
             {
                 argc--;
+                result.generateJsonFile = true;
                 result.compilationDBFolderPath = *argv;
             }
             else
             {
-                std::cerr << "The --compilation-db parameter has no value" << std::endl;
+                std::cerr << "The " << *(argv - 1) << " parameter has no value" << std::endl;
+                exit(EXIT_CODE_BAD_PARAMETERS);
+            }
+        }
+        else if (strcmp(*argv, "--out-json") == 0 || strcmp(*argv, "-o") == 0)
+        {
+            if (++argv)
+            {
+                argc--;
+                result.generateJsonFile = true;
+                result.jsonOutputPath = *argv;
+            }
+            else
+            {
+                std::cerr << "The " << *(argv - 1) << " parameter has no value" << std::endl;
                 exit(EXIT_CODE_BAD_PARAMETERS);
             }
         }
@@ -72,63 +122,81 @@ ParsedArguments getArgs(int &argc, const char **&argv)
         }
         else
         {
-            return result;
+            freeArgs.emplace_back(*argv);
         }
+        ++argv;
+    }
+
+    if (result.generateJsonFile)
+    {
+        if (freeArgs.empty())
+        {
+            std::cerr << "Error: No file provided." << std::endl;
+            exit(EXIT_CODE_NO_CPP_FILE);
+        }
+
+        result.cppFile = std::move(freeArgs.back());
+
+        if (result.jsonOutputPath.empty())
+        {
+            result.jsonOutputPath = result.cppFile + ".json";
+        }
+    }
+    else
+    {
+        if (freeArgs.empty())
+        {
+            std::cerr << "Error: No json files provided." << std::endl;
+            exit(EXIT_CODE_NO_JSON_FILES);
+        }
+        result.jsonFiles = std::move(freeArgs);
     }
 
     return result;
 }
 
-void printHelp(const char *programName)
-{
-    std::cout << "Usage: " << programName << " [options] files_classes_to_serialize..." << std::endl
-    << "Options:" << std::endl
-    //  |1                                                                             |80
-    << "  --out-header      The generated header file (`serializer.h` by default)"     << std::endl
-    << "  --out-code        The generated code file (`serializer.cpp` by default)"     << std::endl
-    << "  --compilation-db  The path of the folder including the compilation database" << std::endl
-    << "                    (`.` by default)"                                          << std::endl
-    << "  -h, --help        Print the program options" << std::endl;
-}
-
 int main(int argc, const char *argv[])
 {
-    std::cout << "CWD: " << std::filesystem::current_path() << std::endl;
-    if (argc < 2)
-    {
-        printHelp(argv[0]);
-        std::cerr << "Error: No files provided." << std::endl;
-        exit(EXIT_CODE_NO_FILES);
-    }
-
-    const char **relative_argv = argv;
-    int relative_argc = argc;
-    ParsedArguments args = getArgs(relative_argc, relative_argv);
+    ParsedArguments args = getArgs(argc, argv);
 
     if (args.showHelp)
     {
         printHelp(argv[0]);
-        exit(EXIT_CODE_OK);
+        return EXIT_CODE_OK;
     }
 
-    std::vector<std::string> files;
-    for (int i = 0; i < relative_argc; i++)
+    int error = 0;
+    if (args.generateJsonFile)
     {
-        files.emplace_back(relative_argv[i]);
+        std::vector<std::string> files = { args.cppFile };
+#if 0
+        std::cout << "Files: " << std::endl;
+        for (const std::string &file : files)
+        {
+            std::cout << "  " << file << std::endl;
+        }
+        std::cout << std::endl;
+#endif
+
+        CXXParser::ExecutionData executionData;
+        error = CXXParser::parse(files, args.compilationDBFolderPath, executionData);
+        Json::write(executionData, args.jsonOutputPath);
     }
-
-    CodeGenerator::copy_files(args.serializerOutHeaderFilename, args.serializerOutCodeFilename);
-
-    std::cout << "Files: " << std::endl;
-    for (const std::string &file : files)
+    else
     {
-        std::cout << "  " << file << std::endl;
-    }
-    std::cout << std::endl;
-    CXXParser::ExecutionData executionData;
-    int error = CXXParser::parse(files, args.compilationDBFolderPath, executionData);
+        CodeGenerator::copy_files(args.serializerOutHeaderFilename, args.serializerOutCodeFilename);
+#if 0
+        std::cout << "Json files: " << std::endl;
+        for (const std::string &file : args.jsonFiles)
+        {
+            std::cout << "  " << file << std::endl;
+        }
+        std::cout << std::endl;
+#endif
 
-    CodeGenerator::generate(executionData, args.serializerOutHeaderFilename, args.serializerOutCodeFilename);
+        CXXParser::ExecutionData executionData = Json::parseAll(args.jsonFiles);
+        CodeGenerator::generate(executionData, args.serializerOutHeaderFilename, args.serializerOutCodeFilename);
+    }
 
     llvm::errs().flush();
     llvm::outs().flush();

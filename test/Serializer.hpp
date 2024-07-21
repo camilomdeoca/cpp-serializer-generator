@@ -43,6 +43,7 @@ concept trivially_copyable = std::is_trivially_copyable_v<T>;
 
 struct Another;
 struct TestStruct;
+struct StructInOtherFile;
 
 class Serializer {
 public:
@@ -72,6 +73,7 @@ public:
 
     void operator()(const Another &object);
     void operator()(const TestStruct &object);
+    void operator()(const StructInOtherFile &object);
 
 private:
     std::ostream &m_os;
@@ -106,6 +108,7 @@ public:
 
     void operator()(Another &object);
     void operator()(TestStruct &object);
+    void operator()(StructInOtherFile &object);
 
 private:
     std::istream &m_is;

@@ -1,6 +1,8 @@
 #file(GLOB_RECURSE SERIALIZER_GENERATOR_TEST_SOURCES test/*.cpp )
 set(SERIALIZER_GENERATOR_TEST_SOURCES
     test.cpp
+    anotherfile.cpp
+    main.cpp
 )
 
 add_executable(serializer-generator-test

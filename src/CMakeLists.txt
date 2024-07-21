@@ -6,6 +6,7 @@ add_executable(serializer-generator
     ASTParser.cpp
     CodeGenerator.cpp
     SerializerTemplate.cpp
+    Json.cpp
 )
 set_target_properties(serializer-generator PROPERTIES
     CXX_STANDARD 17
@@ -24,7 +25,7 @@ target_link_libraries(serializer-generator
 # Generate serializer template before build
 add_custom_command(
     OUTPUT
-        SerializerTemplate.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/SerializerTemplate.cpp
         COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/generate-serializer-template.sh
             ${CMAKE_CURRENT_SOURCE_DIR}/Serializer.hpp.template
             ${CMAKE_CURRENT_SOURCE_DIR}/SerializerTemplate.cpp

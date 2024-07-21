@@ -1,9 +1,9 @@
 #include "ASTParser.hpp"
+#include "SerializerTemplate.hpp"
 
 #include <clang/Frontend/CompilerInstance.h>
 
 #include <clang/Tooling/CompilationDatabase.h>
-#include <iostream>
 #include <memory>
 #include <stdexcept>
 #include <unordered_set>
@@ -67,18 +67,18 @@ void MyASTConsumer::HandleSingleDecl(const clang::CXXRecordDecl &pRecord)
     //if (!SM.isInMainFile(beginLoc))
     //    return;
 
-    RecordDefinitionData structData;
-    structData.name = pRecord.getNameAsString();
-    if (m_alreadyParsedStructsNames.find(structData.name) != m_alreadyParsedStructsNames.end())
+    RecordDefinitionData record;
+    record.name = pRecord.getNameAsString();
+    if (m_alreadyParsedStructsNames.find(record.name) != m_alreadyParsedStructsNames.end())
         return;
-    structData.headerPath = SM.getFilename(beginLoc).str();
-    if (pRecord.isClass()) structData.type = RecordDefinitionData::Type::Class;
-    else if (pRecord.isStruct()) structData.type = RecordDefinitionData::Type::Struct;
+    record.headerPath = SM.getFilename(beginLoc).str();
+    if (pRecord.isClass()) record.type = RecordDefinitionData::Type::Class;
+    else if (pRecord.isStruct()) record.type = RecordDefinitionData::Type::Struct;
     else throw std::runtime_error("Unions are not supported");
 
     for (const clang::CXXBaseSpecifier &baseClass : pRecord.bases())
     {
-        structData.bases.emplace_back(baseClass.getType().getAsString());
+        record.bases.emplace_back(baseClass.getType().getAsString());
         const clang::CXXRecordDecl *baseClassDecl
             = baseClass.getType().getCanonicalType()->getAsCXXRecordDecl();
         if (!baseClassDecl)
@@ -91,15 +91,16 @@ void MyASTConsumer::HandleSingleDecl(const clang::CXXRecordDecl &pRecord)
         fieldData.typeName = field->getType().getAsString();
         fieldData.name = field->getNameAsString();
         fieldData.length = 0;
-        structData.fields.emplace_back(fieldData);
+        record.fields.emplace_back(fieldData);
     }
 
-    std::cout << structData.headerPath << ":" << SM.getSpellingLineNumber(beginLoc) << std::endl;
-    std::cout << "struct " << structData.name << std::endl;
+#if 0
+    std::cout << record.headerPath << ":" << SM.getSpellingLineNumber(beginLoc) << std::endl;
+    std::cout << "struct " << record.name << std::endl;
     bool firstIteration = true;
-    for (const std::string &base : structData.bases)
+    for (const std::string &base : record.bases)
     {
-        bool isLastIteration = base == structData.bases.back();
+        bool isLastIteration = base == record.bases.back();
         if (firstIteration)
         {
             firstIteration = false;
@@ -115,13 +116,14 @@ void MyASTConsumer::HandleSingleDecl(const clang::CXXRecordDecl &pRecord)
             std::cout << "      " << base << "," << std::endl;
     }
     std::cout << "{" << std::endl;
-    for (const RecordDefinitionData::FieldData &fieldData : structData.fields) {
+    for (const RecordDefinitionData::FieldData &fieldData : record.fields) {
         std::cout << "    " << fieldData.typeName << " " << fieldData.name << ";" << std::endl;
     }
     std::cout << "};" << std::endl << std::endl;
+#endif
 
-    m_executionData.records.emplace_back(structData);
-    m_alreadyParsedStructsNames.emplace(structData.name);
+    m_executionData.records.emplace_back(record);
+    m_alreadyParsedStructsNames.emplace(record.name);
 }
 
 bool MyASTConsumer::IsRecordFlaggedToSerialize(const clang::CXXRecordDecl &pRecord)
@@ -142,13 +144,15 @@ bool MyASTConsumer::IsRecordFlaggedToSerialize(const clang::CXXRecordDecl &pReco
 }
 
 std::unique_ptr<clang::ASTConsumer> MyAction::CreateASTConsumer(
-    clang::CompilerInstance &CI, llvm::StringRef InFile) {
+    clang::CompilerInstance &CI, llvm::StringRef InFile)
+{
     return std::make_unique<MyASTConsumer>(m_executionData, m_alreadyParsedStructsNames);
 }
 
-bool MyAction::BeginSourceFileAction(clang::CompilerInstance &CI) {
-    // Customize the CompilerInstance to ignore missing files
+bool MyAction::BeginSourceFileAction(clang::CompilerInstance &CI)
+{
     CI.getDiagnostics().setSuppressAllDiagnostics(true);
+    CI.getPreprocessor().SetSuppressIncludeNotFoundError(true);
     return true;
 }
 
@@ -168,7 +172,8 @@ int parse(std::vector<std::string> files, std::string compilationDbPath, Executi
     clang::tooling::ClangTool Tool(*pCompilationDb, files);
     std::vector<std::string> clangArgs = {
         //"-fparse-all-comments",
-        "-fsyntax-only"
+        "-fsyntax-only",
+        "-include", SERIALIZER_HEADER_TEMPLATE, // So if the serializer's files don't exist yet it doesn't fail
     };
     Tool.appendArgumentsAdjuster(clang::tooling::getInsertArgumentAdjuster(
               clangArgs, clang::tooling::ArgumentInsertPosition::BEGIN));
