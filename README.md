@@ -48,7 +48,7 @@ The `CMakeLists.txt` file should be something like:
 
 ```
 ...
-add_subdirectory(lib/serializer-generator) # Or folder where the repo is cloned
+add_subdirectory(lib/serializer-generator) # Or folder where the repo was cloned
 include(lib/serializer-generator/serializer-generator.cmake) # To use the function
 
 add_executable(some_executable file1.cpp file2.cpp serializer.cpp)
