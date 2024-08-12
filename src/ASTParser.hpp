@@ -31,6 +31,7 @@ struct RecordDefinitionData {
     std::string headerPath;
     std::vector<std::string> bases;
     std::vector<FieldData> fields;
+    std::string namespaceName;
 };
 
 struct ExecutionData {

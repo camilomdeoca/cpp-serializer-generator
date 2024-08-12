@@ -1,6 +1,9 @@
 #include "ASTParser.hpp"
 #include "SerializerTemplate.hpp"
 
+#include <clang/AST/Decl.h>
+#include <clang/AST/DeclBase.h>
+#include <clang/AST/DeclCXX.h>
 #include <clang/Frontend/CompilerInstance.h>
 
 #include <clang/Tooling/CompilationDatabase.h>
@@ -8,6 +11,7 @@
 #include <stdexcept>
 #include <unordered_set>
 #include <vector>
+#include <iostream>
 
 namespace CXXParser {
 
@@ -58,6 +62,23 @@ bool MyASTConsumer::HandleDecl(clang::DeclGroupRef DG)
     return true;
 }
 
+std::string getNamespaces(const clang::DeclContext *declContext)
+{
+    std::string namespaceName;
+    while (declContext)
+    {
+        if (const clang::NamespaceDecl *namespaceDecl = llvm::dyn_cast<clang::NamespaceDecl>(declContext)) {
+            namespaceName = namespaceDecl->getNameAsString() + "::" + namespaceName;
+        }
+        declContext = declContext->getParent();
+    }
+    if (!namespaceName.empty())
+    {
+        namespaceName = namespaceName.substr(0, namespaceName.size() - 2);
+    }
+    return namespaceName;
+}
+
 void MyASTConsumer::HandleSingleDecl(const clang::CXXRecordDecl &pRecord)
 {
     clang::ASTContext &context = pRecord.getASTContext();
@@ -69,6 +90,8 @@ void MyASTConsumer::HandleSingleDecl(const clang::CXXRecordDecl &pRecord)
 
     RecordDefinitionData record;
     record.name = pRecord.getNameAsString();
+    const clang::DeclContext *declContext = pRecord.getDeclContext();
+    record.namespaceName = getNamespaces(declContext);
     if (m_alreadyParsedStructsNames.find(record.name) != m_alreadyParsedStructsNames.end())
         return;
     record.headerPath = SM.getFilename(beginLoc).str();
@@ -78,11 +101,13 @@ void MyASTConsumer::HandleSingleDecl(const clang::CXXRecordDecl &pRecord)
 
     for (const clang::CXXBaseSpecifier &baseClass : pRecord.bases())
     {
-        record.bases.emplace_back(baseClass.getType().getAsString());
         const clang::CXXRecordDecl *baseClassDecl
             = baseClass.getType().getCanonicalType()->getAsCXXRecordDecl();
         if (!baseClassDecl)
             throw std::runtime_error("The base class isnt a record?!?");
+        std::string namespacesNames = getNamespaces(baseClassDecl->getDeclContext());
+        if (!namespacesNames.empty()) namespacesNames += "::";
+        record.bases.emplace_back(namespacesNames + baseClass.getType().getAsString());
         HandleSingleDecl(*baseClassDecl);
     }
     for (const clang::FieldDecl *field : pRecord.fields())
@@ -96,6 +121,7 @@ void MyASTConsumer::HandleSingleDecl(const clang::CXXRecordDecl &pRecord)
 
 #if 0
     std::cout << record.headerPath << ":" << SM.getSpellingLineNumber(beginLoc) << std::endl;
+    std::cout << "namespace " << record.namespaceName << std::endl;
     std::cout << "struct " << record.name << std::endl;
     bool firstIteration = true;
     for (const std::string &base : record.bases)

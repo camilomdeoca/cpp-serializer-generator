@@ -67,6 +67,7 @@ void write(const CXXParser::ExecutionData &executionData, std::filesystem::path 
 
         llvm::json::Object recordJsonObject{
             {"name", data.name},
+            {"namespace", data.namespaceName},
             {"type", recordTypeToString(data.type)},
             {"header_path", data.headerPath},
             {"fields", std::move(fields)},
@@ -105,11 +106,12 @@ CXXParser::ExecutionData parseAll(const std::vector<std::string> toLinkFiles)
                 continue;
 
             const std::optional<llvm::StringRef> name = object->getString("name");
+            const std::optional<llvm::StringRef> namespaceName = object->getString("namespace");
             const std::optional<llvm::StringRef> type = object->getString("type");
             const std::optional<llvm::StringRef> headerPath = object->getString("header_path");
             const llvm::json::Array *fields = object->getArray("fields");
             const llvm::json::Array *bases = object->getArray("bases");
-            if (!name || !type || !fields || !bases)
+            if (!name || !namespaceName || !type || !fields || !bases)
                 continue;
 
             bool alreadyInExecutionData = false;
@@ -125,6 +127,7 @@ CXXParser::ExecutionData parseAll(const std::vector<std::string> toLinkFiles)
 
             CXXParser::RecordDefinitionData &record = executionData.records.emplace_back();
             record.name = name.value();
+            record.namespaceName = namespaceName.value();
             record.type = parseRecordType(type.value().str());
             record.headerPath = headerPath.value();
             for (const llvm::json::Value &fieldValue : *fields)

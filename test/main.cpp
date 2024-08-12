@@ -9,7 +9,7 @@
 
 int main (int argc, char *argv[]) {
     int error = -1;
-    TestStruct testBefore {
+    what::whatagain::TestStruct testBefore {
         "string",
         {1, 2, 3, 4},
         2.56f,
@@ -25,7 +25,7 @@ int main (int argc, char *argv[]) {
     }
     std::cout << "SWITCH" << std::endl;
     {
-        TestStruct test{"", {}, 0.0f, 0};
+        what::whatagain::TestStruct test{"", {}, 0.0f, 0};
         std::ifstream ifs("binary_out");
         test.unserialize(ifs);
         if (   testBefore.name == test.name

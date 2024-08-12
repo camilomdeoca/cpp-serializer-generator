@@ -29,7 +29,8 @@
     }
 
 template<typename T>
-concept array_type = requires(T t) {
+concept array_type = requires(T t)
+{
     t.size();
     t.data();
     requires std::is_pointer_v<decltype(t.data())>;
@@ -42,16 +43,20 @@ template<typename T>
 concept trivially_copyable = std::is_trivially_copyable_v<T>;
 
 struct Another;
-struct TestStruct;
+namespace what::whatagain {
+    struct TestStruct;
+}
 struct StructInOtherFile;
 
-class Serializer {
+class Serializer
+{
 public:
     Serializer(std::ostream &os)
         : m_os(os)
     {}
 
-    void operator()(const array_type auto &field) {
+    void operator()(const array_type auto &field)
+    {
         using size_type = decltype(field.size());
         const size_type size = field.size();
 
@@ -72,14 +77,15 @@ public:
     void operator()(const auto &object) { static_assert(false, "The Serializer class needs regeneration."); }
 
     void operator()(const Another &object);
-    void operator()(const TestStruct &object);
+    void operator()(const what::whatagain::TestStruct &object);
     void operator()(const StructInOtherFile &object);
 
 private:
     std::ostream &m_os;
 };
 
-class Unserializer {
+class Unserializer
+{
 public:
     Unserializer(std::istream &is)
         : m_is(is)
@@ -107,7 +113,7 @@ public:
     void operator()(auto &object) { static_assert(false, "The Unserializer class needs regeneration."); }
 
     void operator()(Another &object);
-    void operator()(TestStruct &object);
+    void operator()(what::whatagain::TestStruct &object);
     void operator()(StructInOtherFile &object);
 
 private:

@@ -39,20 +39,40 @@ void generateHeader(const CXXParser::ExecutionData &data, std::filesystem::path 
         {
             for (const CXXParser::RecordDefinitionData &recordData : data.records)
             {
-                if (recordData.type == CXXParser::RecordDefinitionData::Type::Class)
-                    ofs << "class " << recordData.name << ";" << std::endl;
-                else if (recordData.type == CXXParser::RecordDefinitionData::Type::Struct)
-                    ofs << "struct " << recordData.name << ";" << std::endl;
+                if (recordData.namespaceName.empty())
+                {
+                    if (recordData.type == CXXParser::RecordDefinitionData::Type::Class)
+                        ofs << "class " << recordData.name << ";" << std::endl;
+                    else if (recordData.type == CXXParser::RecordDefinitionData::Type::Struct)
+                        ofs << "struct " << recordData.name << ";" << std::endl;
+                }
+                else
+                {
+                    ofs << "namespace " << recordData.namespaceName << " {" << std::endl;
+                    if (recordData.type == CXXParser::RecordDefinitionData::Type::Class)
+                        ofs << TAB_STRING << "class " << recordData.name << ";" << std::endl;
+                    else if (recordData.type == CXXParser::RecordDefinitionData::Type::Struct)
+                        ofs << TAB_STRING << "struct " << recordData.name << ";" << std::endl;
+                    ofs << "}" << std::endl;
+                }
             }
         }
         else if (line == HEADER_TEMPLATE_SERIALIZER_DECLARATIONS_LINE)
             for (const CXXParser::RecordDefinitionData &recordData : data.records)
-                ofs << TAB_STRING << "void operator()(const " << recordData.name << " &object);"
+            {
+                std::string namespacesNames = recordData.namespaceName;
+                if (!namespacesNames.empty()) namespacesNames += "::";
+                ofs << TAB_STRING << "void operator()(const " << namespacesNames << recordData.name << " &object);"
                     << std::endl;
+            }
         else if (line == HEADER_TEMPLATE_UNSERIALIZER_DECLARATIONS_LINE)
             for (const CXXParser::RecordDefinitionData &recordData : data.records)
-                ofs << TAB_STRING << "void operator()(" << recordData.name << " &object);"
+            {
+                std::string namespacesNames = recordData.namespaceName;
+                if (!namespacesNames.empty()) namespacesNames += "::";
+                ofs << TAB_STRING << "void operator()(" << namespacesNames << recordData.name << " &object);"
                     << std::endl;
+            }
         else
             ofs << line << std::endl;
     }
@@ -113,7 +133,9 @@ void generateCode(const CXXParser::ExecutionData &data,
         //    ...
         //}
 
-        ofs << "void Serializer::operator()(const " << structData.name << " &object)" << std::endl
+        std::string namespacesNames = structData.namespaceName;
+        if (!namespacesNames.empty()) namespacesNames += "::";
+        ofs << "void Serializer::operator()(const " << namespacesNames << structData.name << " &object)" << std::endl
             << "{" << std::endl;
         for (const std::string &baseClass : structData.bases)
         {
@@ -125,7 +147,7 @@ void generateCode(const CXXParser::ExecutionData &data,
         }
         ofs << "}" << std::endl << std::endl;
 
-        ofs << "void Unserializer::operator()(" << structData.name << " &object)" << std::endl
+        ofs << "void Unserializer::operator()(" << namespacesNames << structData.name << " &object)" << std::endl
             << "{" << std::endl;
         for (const std::string &baseClass : structData.bases)
         {
