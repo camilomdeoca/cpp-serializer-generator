@@ -19,7 +19,7 @@ target_include_directories(serializer-generator
 target_link_libraries(serializer-generator
     PRIVATE
     clang-cpp
-    LLVM-17
+    LLVM
 )
 
 # Generate serializer template before build
