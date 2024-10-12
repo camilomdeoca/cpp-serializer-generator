@@ -3,6 +3,7 @@
 // This Header was generated with serializer-generator
 
 #include <type_traits>
+#include <concepts>
 #include <iostream>
 
 #ifdef LOG_EVERY_SERIALIZATION
@@ -19,7 +20,7 @@
     friend class Unserializer;
 
 template<typename T>
-concept array_type = requires(T t)
+concept dynamic_array_type = requires(T t)
 {
     t.size();
     t.data();
@@ -46,14 +47,24 @@ public:
         : m_os(os)
     {}
 
-    void operator()(const array_type auto &field)
+    void operator()(const dynamic_array_type auto &field)
     {
         using size_type = decltype(field.size());
         const size_type size = field.size();
 
-        LOG_SERIALIZATION("Aggregate of size: " << size);
+        LOG_SERIALIZATION("Dynamic aggregate of size: " << size);
         m_os.write(reinterpret_cast<const char*>(&size), sizeof(size));
         for (size_type i = 0; i < size; i++)
+        {
+            (*this)(field[i]);
+        }
+    }
+
+    template <class ElementType, typename SizeType, SizeType size>
+    void operator()(const std::array<ElementType, size> &field)
+    {
+        LOG_SERIALIZATION("Serializing std::array of size: " << size);
+        for (SizeType i = 0; i < size; i++)
         {
             (*this)(field[i]);
         }
@@ -83,14 +94,24 @@ public:
         : m_is(is)
     {}
 
-    void operator()(array_type auto &field)
+    void operator()(dynamic_array_type auto &field)
     {
         using size_type = decltype(field.size());
         size_type size;
         m_is.read(reinterpret_cast<char*>(&size), sizeof(size));
-        LOG_SERIALIZATION("Aggregate of size: " << size);
+        LOG_SERIALIZATION("Dynamic aggregate of size: " << size);
         field.resize(size);
         for (size_type i = 0; i < size; i++)
+        {
+            (*this)(field[i]);
+        }
+    }
+
+    template <class ElementType, typename SizeType, SizeType size>
+    void operator()(std::array<ElementType, size> &field)
+    {
+        LOG_SERIALIZATION("Unserializing std::array of size: " << size);
+        for (SizeType i = 0; i < size; i++)
         {
             (*this)(field[i]);
         }

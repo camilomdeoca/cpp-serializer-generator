@@ -19,6 +19,7 @@ void Serializer::operator()(const Another &object)
 {
     (*this)(object.name);
     (*this)(object.numbers);
+    (*this)(object.strings);
     (*this)(object.structInside);
 }
 
@@ -26,6 +27,7 @@ void Unserializer::operator()(Another &object)
 {
     (*this)(object.name);
     (*this)(object.numbers);
+    (*this)(object.strings);
     (*this)(object.structInside);
 }
 

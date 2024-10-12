@@ -14,6 +14,7 @@ struct AnotherStructThatWillBeField {
 struct Another {
     std::string name;
     std::vector<int> numbers;
+    std::array<std::vector<std::string>, 2> strings;
     AnotherStructThatWillBeField structInside;
 };
 
@@ -23,14 +24,15 @@ namespace what::whatagain {
         TestStruct(
                 std::string name,
                 std::vector<int> &&numbers,
+                std::array<std::vector<std::string>, 2> &&strings,
                 AnotherStructThatWillBeField structInside,
                 float volume,
                 uint32_t count)
-            : Another(name, numbers, structInside), volume(volume), count(count)
+            : Another(name, numbers, strings, structInside), volume(volume), count(count)
         {}
-    
+
         void testFunc() {}
-    
+
         float volume;
         uint32_t count;
         AUTO_SERIALIZE

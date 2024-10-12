@@ -15,6 +15,14 @@ std::ostream & operator << (std::ostream &out, const what::whatagain::TestStruct
     for (const auto &number : c.numbers) {
         out << number << " ";
     }
+    out << "strings: " << std::endl;
+    for (const std::vector<std::string> &strings : c.strings) {
+        out << "    ";
+        for (const std::string &str : strings) {
+            out << str << " ";
+        }
+        out << std::endl;
+    }
     out << std::endl;
     out << "i, j: " << c.structInside.i << " " << c.structInside.j << std::endl;
     out << "count: " << c.count << std::endl;
@@ -27,6 +35,7 @@ int main (int argc, char *argv[]) {
     what::whatagain::TestStruct testBefore {
         "string",
         {1, 2, 3, 4},
+        {{{"string 1", "adwda"}, {"bbbbb", "cccc"}}},
         {5, 3.12f},
         2.56f,
         200
@@ -42,12 +51,14 @@ int main (int argc, char *argv[]) {
     }
     std::cout << "SWITCH" << std::endl;
     {
-        what::whatagain::TestStruct test{"", {}, {0, 0.0f}, 0.0f, 0};
+        what::whatagain::TestStruct test{"", {}, {{{},{}}}, {0, 0.0f}, 0.0f, 0};
         std::ifstream ifs("binary_out");
         Unserializer unserializer(ifs);
         unserializer(test);
         if (   testBefore.name == test.name
             && testBefore.volume == test.volume
+            && vectorsAreSame(testBefore.strings[0], test.strings[0])
+            && vectorsAreSame(testBefore.strings[1], test.strings[1])
             && testBefore.structInside.i == test.structInside.i
             && testBefore.structInside.j == test.structInside.j
             && testBefore.count == test.count
