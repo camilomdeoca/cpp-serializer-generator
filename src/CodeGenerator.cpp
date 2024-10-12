@@ -12,6 +12,8 @@ namespace CodeGenerator {
 constexpr char HEADER_TEMPLATE_FORWARD_DECLARATION_LINE[] = "// @FORWARD_DECLARATIONS@";
 constexpr char HEADER_TEMPLATE_SERIALIZER_DECLARATIONS_LINE[] = "// @SERIALIZER_DECLARATIONS@";
 constexpr char HEADER_TEMPLATE_UNSERIALIZER_DECLARATIONS_LINE[] = "// @UNSERIALIZER_DECLARATIONS@";
+constexpr char HEADER_TEMPLATE_UNSERIALIZER_NEEDS_REGENERATION_ASSERT[] = "// @UNSERIALIZER_NEEDS_REGENERATION_ASSERT@";
+constexpr char HEADER_TEMPLATE_SERIALIZER_NEEDS_REGENERATION_ASSERT[] = "// @SERIALIZER_NEEDS_REGENERATION_ASSERT@";
 
 constexpr char TAB_STRING[] = "    ";
 
@@ -73,6 +75,14 @@ void generateHeader(const CXXParser::ExecutionData &data, std::filesystem::path 
                 ofs << TAB_STRING << "void operator()(" << namespacesNames << recordData.name << " &object);"
                     << std::endl;
             }
+        else if (line == HEADER_TEMPLATE_SERIALIZER_NEEDS_REGENERATION_ASSERT)
+        {
+            ofs << TAB_STRING << "void operator()(const auto &object) { static_assert(false, \"The Serializer class needs regeneration.\"); }" << std::endl;
+        }
+        else if (line == HEADER_TEMPLATE_UNSERIALIZER_NEEDS_REGENERATION_ASSERT)
+        {
+            ofs << TAB_STRING << "void operator()(auto &object) { static_assert(false, \"The Unserializer class needs regeneration.\"); }" << std::endl;
+        }
         else
             ofs << line << std::endl;
     }
@@ -167,6 +177,32 @@ void generate(const CXXParser::ExecutionData &data,
 {
     generateHeader(data, outHeaderFilepath);
     generateCode(data, outHeaderFilepath, outCodeFilepath);
+}
+
+void generateDummyHeader(std::filesystem::path outHeaderFilepath)
+{
+    std::ofstream ofs(outHeaderFilepath);
+    std::istringstream iss(SERIALIZER_HEADER_TEMPLATE);
+    if (!ofs)
+    {
+        std::cout << "Error opening file" << outHeaderFilepath << std::endl;
+        return;
+    }
+
+    std::string line;
+    while (std::getline(iss, line))
+    {
+        if (line == HEADER_TEMPLATE_SERIALIZER_NEEDS_REGENERATION_ASSERT)
+        {
+            ofs << TAB_STRING << "void operator()(const auto &object) {}" << std::endl;
+        }
+        else if (line == HEADER_TEMPLATE_UNSERIALIZER_NEEDS_REGENERATION_ASSERT)
+        {
+            ofs << TAB_STRING << "void operator()(auto &object) {}" << std::endl;
+        }
+        else
+            ofs << line << std::endl;
+    }
 }
 
 } // namespace CodeGenerator

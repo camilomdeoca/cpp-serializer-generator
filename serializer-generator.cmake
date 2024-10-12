@@ -24,8 +24,8 @@ function(add_serializer_generation TARGET)
             OUTPUT ${JSON_FILE}
             COMMAND $<TARGET_FILE:serializer-generator>
                 --compilation-db ${ARG_COMPILATION_DB}
-                --no-link
                 --out-json ${JSON_FILE}
+                --out-header ${ARG_HEADER}
                 ${FILE}
             DEPENDS
                 $<TARGET_FILE:serializer-generator>

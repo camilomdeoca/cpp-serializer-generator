@@ -16,17 +16,7 @@
 #define AUTO_SERIALIZE                                                                             \
     using enable_auto_serialize = void;                                                            \
     friend class Serializer;                                                                       \
-    friend class Unserializer;                                                                     \
-    void serialize(std::ostream &os) const                                                         \
-    {                                                                                              \
-        Serializer serializer(os);                                                                 \
-        serializer(*this);                                                                         \
-    }                                                                                              \
-    void unserialize(std::istream &is)                                                             \
-    {                                                                                              \
-        Unserializer unserializer(is);                                                             \
-        unserializer(*this);                                                                       \
-    }
+    friend class Unserializer;
 
 template<typename T>
 concept array_type = requires(T t)
@@ -42,6 +32,7 @@ concept array_type = requires(T t)
 template<typename T>
 concept trivially_copyable = std::is_trivially_copyable_v<T>;
 
+struct AnotherStructThatWillBeField;
 struct Another;
 namespace what::whatagain {
     struct TestStruct;
@@ -76,6 +67,7 @@ public:
 
     void operator()(const auto &object) { static_assert(false, "The Serializer class needs regeneration."); }
 
+    void operator()(const AnotherStructThatWillBeField &object);
     void operator()(const Another &object);
     void operator()(const what::whatagain::TestStruct &object);
     void operator()(const StructInOtherFile &object);
@@ -112,6 +104,7 @@ public:
 
     void operator()(auto &object) { static_assert(false, "The Unserializer class needs regeneration."); }
 
+    void operator()(AnotherStructThatWillBeField &object);
     void operator()(Another &object);
     void operator()(what::whatagain::TestStruct &object);
     void operator()(StructInOtherFile &object);

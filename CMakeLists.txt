@@ -1,5 +1,5 @@
-cmake_minimum_required(VERSION 3.27)
-project(paca-tools)
+cmake_minimum_required(VERSION 3.29)
+project(cpp-serializer-generator)
 
 # Set C++ standard and optimization level
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")

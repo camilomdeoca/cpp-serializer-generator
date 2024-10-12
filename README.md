@@ -13,7 +13,7 @@ public:
     SomeClass();
     ~SomeClass();
 
-    AUTO_SERIALIZE;
+    AUTO_SERIALIZE
 
 private:
     int aNumber;
@@ -24,7 +24,7 @@ private:
 
 Where `serializer.hpp` is the generated serializer header file and `AnotherClass` is a class that
 can be serialized (but doesn't need to have `AUTO_SERIALIZE`). You can then use the methods
-`SomeClass::serialize(std::ostream &os)` and `SomeClass::unserialize(std::istream &is)`.
+`Serializer::operator()(const SomeClass &obj)` and `Unserializer::operator()(SomeClass &obj)`.
 
 # Generating serializer
 

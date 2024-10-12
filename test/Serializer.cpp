@@ -3,16 +3,30 @@
 #include "test.h"
 #include "anotherfile.hpp"
 
+void Serializer::operator()(const AnotherStructThatWillBeField &object)
+{
+    (*this)(object.i);
+    (*this)(object.j);
+}
+
+void Unserializer::operator()(AnotherStructThatWillBeField &object)
+{
+    (*this)(object.i);
+    (*this)(object.j);
+}
+
 void Serializer::operator()(const Another &object)
 {
     (*this)(object.name);
     (*this)(object.numbers);
+    (*this)(object.structInside);
 }
 
 void Unserializer::operator()(Another &object)
 {
     (*this)(object.name);
     (*this)(object.numbers);
+    (*this)(object.structInside);
 }
 
 void Serializer::operator()(const what::whatagain::TestStruct &object)

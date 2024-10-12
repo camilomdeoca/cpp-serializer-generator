@@ -9,6 +9,7 @@ namespace CodeGenerator {
 
 void copy_files(std::filesystem::path outHeaderFilepath, std::filesystem::path outCodeFilepath);
 void generate(const CXXParser::ExecutionData &data, std::filesystem::path outHeaderFilepath, std::filesystem::path outCodeFilepath);
+void generateDummyHeader(std::filesystem::path outHeaderFilepath);
 
 } // namespace CodeGenerator
 

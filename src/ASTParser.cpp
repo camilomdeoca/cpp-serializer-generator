@@ -1,13 +1,17 @@
 #include "ASTParser.hpp"
 #include "SerializerTemplate.hpp"
 
+#include <clang/Rewrite/Core/Rewriter.h>
+#include <clang/Parse/ParseAST.h>
 #include <clang/AST/Decl.h>
 #include <clang/AST/DeclBase.h>
 #include <clang/AST/DeclCXX.h>
 #include <clang/Frontend/CompilerInstance.h>
+#include <llvm/Support/VirtualFileSystem.h>
 
 #include <clang/Tooling/CompilationDatabase.h>
 #include <memory>
+#include <iostream>
 #include <stdexcept>
 #include <unordered_set>
 #include <vector>
@@ -91,12 +95,33 @@ void MyASTConsumer::HandleSingleDecl(const clang::CXXRecordDecl &pRecord)
     record.name = pRecord.getNameAsString();
     const clang::DeclContext *declContext = pRecord.getDeclContext();
     record.namespaceName = getNamespaces(declContext);
-    if (m_alreadyParsedStructsNames.find(record.name) != m_alreadyParsedStructsNames.end())
+
+    // Do not serialize structs in std
+    if (record.namespaceName.substr(0, 3) == "std")
         return;
+
+    // Do not add already parsed structs
+    if (m_alreadyParsedStructsNames.find(
+            (record.namespaceName.empty() ? "" : record.namespaceName + "::") +
+            record.name) != m_alreadyParsedStructsNames.end())
+        return;
+
     record.headerPath = SM.getFilename(beginLoc).str();
-    if (pRecord.isClass()) record.type = RecordDefinitionData::Type::Class;
-    else if (pRecord.isStruct()) record.type = RecordDefinitionData::Type::Struct;
-    else throw std::runtime_error("Unions are not supported");
+
+    // Only serialize structs and records
+    if (pRecord.isClass())
+    {
+        record.type = RecordDefinitionData::Type::Class;
+    }
+    else if (pRecord.isStruct())
+    {
+        record.type = RecordDefinitionData::Type::Struct;
+    }
+    else
+    {
+        std::cerr << "Union serialization not supported" << std::endl;
+        return;
+    }
 
     for (const clang::CXXBaseSpecifier &baseClass : pRecord.bases())
     {
@@ -111,6 +136,13 @@ void MyASTConsumer::HandleSingleDecl(const clang::CXXRecordDecl &pRecord)
     }
     for (const clang::FieldDecl *field : pRecord.fields())
     {
+        // In case the type of the field is a record so it needs auto serialization
+        // TODO: Support different namespaces in types of fields
+        const clang::CXXRecordDecl *fieldClassDecl = field->getType().getCanonicalType()->getAsCXXRecordDecl();
+        if (fieldClassDecl)
+        {
+            HandleSingleDecl(*fieldClassDecl);
+        }
         RecordDefinitionData::FieldData fieldData;
         fieldData.typeName = field->getType().getAsString();
         fieldData.name = field->getNameAsString();
@@ -148,7 +180,8 @@ void MyASTConsumer::HandleSingleDecl(const clang::CXXRecordDecl &pRecord)
 #endif
 
     m_executionData.records.emplace_back(record);
-    m_alreadyParsedStructsNames.emplace(record.name);
+    m_alreadyParsedStructsNames.emplace(
+            (record.namespaceName.empty() ? "" : record.namespaceName + "::") + record.name);
 }
 
 bool MyASTConsumer::IsRecordFlaggedToSerialize(const clang::CXXRecordDecl &pRecord)
@@ -176,8 +209,11 @@ std::unique_ptr<clang::ASTConsumer> MyAction::CreateASTConsumer(
 
 bool MyAction::BeginSourceFileAction(clang::CompilerInstance &CI)
 {
-    CI.getDiagnostics().setSuppressAllDiagnostics(true);
-    CI.getPreprocessor().SetSuppressIncludeNotFoundError(true);
+    //clang::Preprocessor &PP = CI.getPreprocessor();
+    //clang::SourceManager &SM = CI.getSourceManager();
+
+    //CI.getDiagnostics().setSuppressAllDiagnostics(true);
+    //PP.SetSuppressIncludeNotFoundError(true);
     return true;
 }
 
@@ -192,20 +228,24 @@ int parse(std::vector<std::string> files, std::string compilationDbPath, Executi
     std::unique_ptr<clang::tooling::CompilationDatabase> pCompilationDb
         = clang::tooling::CompilationDatabase::loadFromDirectory(compilationDbPath, errorMessage);
     if (!pCompilationDb)
+    {
+        std::cerr << errorMessage << std::endl;
         return 1;
+    }
 
     clang::tooling::ClangTool Tool(*pCompilationDb, files);
     std::vector<std::string> clangArgs = {
         //"-fparse-all-comments",
         "-fsyntax-only",
-        "-include", SERIALIZER_HEADER_TEMPLATE, // So if the serializer's files don't exist yet it doesn't fail
     };
     Tool.appendArgumentsAdjuster(clang::tooling::getInsertArgumentAdjuster(
               clangArgs, clang::tooling::ArgumentInsertPosition::BEGIN));
 
     MyFactory factory(executionData);
 
-    return Tool.run(&factory);
+    int result = Tool.run(&factory);
+
+    return result;
 }
 
 } // namespace CXXParser

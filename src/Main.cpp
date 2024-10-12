@@ -23,6 +23,7 @@ struct ParsedArguments {
     std::string jsonOutputPath;
     std::string cppFile;
     std::vector<std::string> jsonFiles;
+    std::vector<std::string> clangArgs;
     bool showHelp = false;
     bool generateJsonFile = false;
 };
@@ -37,10 +38,11 @@ void printHelp(std::string_view programName)
     "  unserializer classes for serializing/unserializing the classes or structs with\n"
     "  the macro\n"
     "Json generation:\n"
-    "Usage: " << programName << " [options] cpp_file\n"
+    "Usage: " << programName << " [options] cpp_file [clang_options...]\n"
     "  --out-json        The generated json filepath (`cpp_file.json` by default)\n"
     "  --compilation-db  The path of the folder including the compilation database\n"
     "                    (`.` by default)\n"
+    "  --out-header      The generated header filepath (`serializer.h` by default)\n"
     "  -h, --help        Print the program options\n"
     "C++ files generation:\n"
     "Usage: " << programName << " [options] json_file...\n"
@@ -55,6 +57,13 @@ ParsedArguments getArgs(int argc, const char **argv)
     std::vector<std::string> freeArgs;
 
     result.executableName = *argv;
+#if DEBUG
+    for (int i = 0; i < argc; i++)
+    {
+        std::cout << argv[i] << " ";
+    }
+    std::cout << std::endl;
+#endif
 
     ++argv;
     while (*argv)
@@ -65,7 +74,7 @@ ParsedArguments getArgs(int argc, const char **argv)
             if (++argv)
             {
                 argc--;
-                result.generateJsonFile = false;
+                //result.generateJsonFile = false;
                 result.serializerOutHeaderFilename = *argv;
             }
             else
@@ -79,7 +88,7 @@ ParsedArguments getArgs(int argc, const char **argv)
             if (++argv)
             {
                 argc--;
-                result.generateJsonFile = false;
+                //result.generateJsonFile = false;
                 result.serializerOutCodeFilename = *argv;
             }
             else
@@ -135,7 +144,9 @@ ParsedArguments getArgs(int argc, const char **argv)
             exit(EXIT_CODE_NO_CPP_FILE);
         }
 
-        result.cppFile = std::move(freeArgs.back());
+        result.cppFile = freeArgs.front();
+        freeArgs.erase(freeArgs.begin());
+        result.clangArgs = std::move(freeArgs);
 
         if (result.jsonOutputPath.empty())
         {
@@ -178,9 +189,23 @@ int main(int argc, const char *argv[])
         std::cout << std::endl;
 #endif
 
+        bool serializerHeaderExists = std::filesystem::exists(args.serializerOutHeaderFilename);
+
+        if (serializerHeaderExists)
+        {
+            std::filesystem::rename(args.serializerOutHeaderFilename, args.serializerOutHeaderFilename + ".bak");
+        }
+        CodeGenerator::generateDummyHeader(args.serializerOutHeaderFilename);
+
         CXXParser::ExecutionData executionData;
         error = CXXParser::parse(files, args.compilationDBFolderPath, executionData);
         Json::write(executionData, args.jsonOutputPath);
+
+        std::filesystem::remove(args.serializerOutHeaderFilename);
+        if (serializerHeaderExists)
+        {
+            std::filesystem::rename(args.serializerOutHeaderFilename + ".bak", args.serializerOutHeaderFilename);
+        }
     }
     else
     {

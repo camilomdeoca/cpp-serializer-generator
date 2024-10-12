@@ -1,3 +1,4 @@
+#include "Serializer.hpp"
 #include "anotherfile.hpp"
 #include "test.h"
 
@@ -7,11 +8,26 @@
 #include <fstream>
 #include <vector>
 
+std::ostream & operator << (std::ostream &out, const what::whatagain::TestStruct &c)
+{
+    out << "name: " << c.name << std::endl;
+    out << "numbers: ";
+    for (const auto &number : c.numbers) {
+        out << number << " ";
+    }
+    out << std::endl;
+    out << "i, j: " << c.structInside.i << " " << c.structInside.j << std::endl;
+    out << "count: " << c.count << std::endl;
+    out << "volume: " << c.volume << std::endl;
+    return out;
+}
+
 int main (int argc, char *argv[]) {
     int error = -1;
     what::whatagain::TestStruct testBefore {
         "string",
         {1, 2, 3, 4},
+        {5, 3.12f},
         2.56f,
         200
     };
@@ -21,15 +37,19 @@ int main (int argc, char *argv[]) {
     };
     {
         std::ofstream ofs("binary_out");
-        testBefore.serialize(ofs);
+        Serializer serializer(ofs);
+        serializer(testBefore);
     }
     std::cout << "SWITCH" << std::endl;
     {
-        what::whatagain::TestStruct test{"", {}, 0.0f, 0};
+        what::whatagain::TestStruct test{"", {}, {0, 0.0f}, 0.0f, 0};
         std::ifstream ifs("binary_out");
-        test.unserialize(ifs);
+        Unserializer unserializer(ifs);
+        unserializer(test);
         if (   testBefore.name == test.name
             && testBefore.volume == test.volume
+            && testBefore.structInside.i == test.structInside.i
+            && testBefore.structInside.j == test.structInside.j
             && testBefore.count == test.count
             && vectorsAreSame(testBefore.numbers, test.numbers))
         {
@@ -39,6 +59,8 @@ int main (int argc, char *argv[]) {
         else
         {
             std::cout << "The unserialized struct differs from the serialized struct" << std::endl;
+            std::cout << testBefore << std::endl;
+            std::cout << test << std::endl;
             error = 1;
         }
     }

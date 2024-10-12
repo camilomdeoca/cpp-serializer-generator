@@ -16,17 +16,7 @@
 #define AUTO_SERIALIZE                                                                             \
     using enable_auto_serialize = void;                                                            \
     friend class Serializer;                                                                       \
-    friend class Unserializer;                                                                     \
-    void serialize(std::ostream &os) const                                                         \
-    {                                                                                              \
-        Serializer serializer(os);                                                                 \
-        serializer(*this);                                                                         \
-    }                                                                                              \
-    void unserialize(std::istream &is)                                                             \
-    {                                                                                              \
-        Unserializer unserializer(is);                                                             \
-        unserializer(*this);                                                                       \
-    }
+    friend class Unserializer;
 
 template<typename T>
 concept array_type = requires(T t)
@@ -70,7 +60,7 @@ public:
         m_os.write(reinterpret_cast<const char*>(&field), sizeof(field));
     }
 
-    void operator()(const auto &object) { static_assert(false, "The Serializer class needs regeneration."); }
+// @SERIALIZER_NEEDS_REGENERATION_ASSERT@
 
 // @SERIALIZER_DECLARATIONS@
 
@@ -104,7 +94,7 @@ public:
         LOG_SERIALIZATION(field);
     }
 
-    void operator()(auto &object) { static_assert(false, "The Unserializer class needs regeneration."); }
+// @UNSERIALIZER_NEEDS_REGENERATION_ASSERT@
 
 // @UNSERIALIZER_DECLARATIONS@
 
